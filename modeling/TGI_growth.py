@@ -72,7 +72,7 @@ for it in its:
     
 # attempt at computing approximate linear growth rate
 dat=gemini3d.read.frame(direc,cfg["time"][0])   # get background state info directly from model initial conditions
-ky=2*np.pi/750                                  # visually the fastest growing mode is about 750 m
+ky=2*np.pi/1000                                  # visually the fastest growing mode is about 750 m
 ne=dat["ne"][ialt,:,:]
 n0=ne.mean()                                    # try grid-averaged values for these, use F-region ref. altitude
 Ti=dat["Ti"][ialt,:,:]
