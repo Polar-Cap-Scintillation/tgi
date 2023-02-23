@@ -81,10 +81,21 @@ def hudson_formulation():
     print('tau = ', 1./gamma)
 
 def keskinen_formulation():
+    # Modified based on our best estimation of typos in the paper
 
-    # Units don't work???
-    gamma = c*ky*T/(B*n*e)*np.sqrt(dndx*dTdx)
+    # Use SI units
+    ky = 1/1000.     # m^-1
+    T = 0.1/const.value('joule-electron volt relationship')     # J
+    B = 3.2e-5      # T
+    L_n = 1000.      # m
+    L_T = 1000.      # m
+
+    gamma = ky*T/(B*const.e)/np.sqrt(L_n*L_T)
+
+    print('gamma = ', gamma)
+    print('tau = ', 1./gamma)
 
 if __name__=='__main__':
     # hudson_exact()
     # hudson_formulation()
+    keskinen_formulation()
