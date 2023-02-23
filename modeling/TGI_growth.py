@@ -16,6 +16,7 @@ import gemini3d.read
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy
 #from plotGDI_tools import padstr
 
 # set some font sizes
@@ -43,9 +44,9 @@ parmlbl="ne"
 print("...Loading config and grid...")
 cfg = gemini3d.read.config(direc)
 xg = gemini3d.read.grid(direc)
-x = xg["x2"][2:-2]  # remove ghost cells
-y = xg["x3"][2:-2]
-z = xg["x1"][2:-2]
+x = np.array(xg["x2"][2:-2])  # remove ghost cells
+y = np.array(xg["x3"][2:-2])
+z = np.array(xg["x1"][2:-2])
 
 # reference altitude
 altref = 300e3
@@ -69,13 +70,14 @@ for it in its:
     neslices[it,:]=ne[ialt,ix2,:]-ne[ialt,ix2,:].mean()    # subtract out mean so we have only fluctuations
     tamp[it]=(cfg["time"][it]-t0).total_seconds()
     neamp[it]=np.std(neslices[it,:]);
+N=it     # save successful number of time samples loaded
     
 # attempt at computing approximate linear growth rate
 dat=gemini3d.read.frame(direc,cfg["time"][0])   # get background state info directly from model initial conditions
 ky=2*np.pi/1000                                  # visually the fastest growing mode is about 750 m
-ne=dat["ne"][ialt,:,:]
+ne=np.array(dat["ne"][ialt,:,:])
 n0=ne.mean()                                    # try grid-averaged values for these, use F-region ref. altitude
-Ti=dat["Ti"][ialt,:,:]
+Ti=np.array(dat["Ti"][ialt,:,:])
 ix3=int(np.floor(xg["lx"][2]/2))
 Ti0=Ti.mean()
 dx=x[ix2+1]-x[ix2-1]
@@ -86,21 +88,26 @@ B=45000e-9
 kB=1.38e-23
 gamma=ky/q/B*np.sqrt(kB*Ti0/n0*abs(dndx)*kB*abs(dTdx))     # corrected version of approximate growth from Keskinen, 2004
 
+# compute some derived parameters like effective scale lengths for density and temperature variation
+LT=1/(1/Ti0*dTdx)
+Ln=1/(1/n0*dndx)
+print("Effective scale lengths at sim. beginning:  ",LT,Ln)
+
 # define a reference exponential growth profile
 tref=500                                         # reference time after initial noise has settled and growth has begun
 itref=np.argmin(abs(tamp-tref))
 nref=neamp[itref];
-nlinear=nref*np.exp(np.array(gamma)*(np.array(tamp)-tref))
+nlinear=nref*np.exp(gamma*(tamp-tref))
 
-# plots
-plt.subplots(2,1,dpi=250)
+# plots of spatial domain fluctuations
+plt.subplots(2,1,dpi=150)
 plt.subplot(2,1,1)
-plt.pcolormesh(tamp[0:it],y,np.array(neslices[0:it,:]).transpose()/np.array(n0))
+plt.pcolormesh(tamp[0:it],y,neslices[0:it,:].transpose()/n0)
 #plt.pcolormesh(tamp[0:it],y,neslices[0:it,:].transpose())
 plt.colorbar()
 plt.xlabel("time (s)")
 plt.title("$\Delta n_e / n_e$")
-plt.ylabl("dist. ortho. to graidents (m)")
+plt.ylabel("dist. ortho. to gradients (m)")
 #plt.ylabel("$\Delta n_e (m$^{-3}$)")
 plt.subplot(2,1,2)
 plt.plot(tamp[0:it],np.log10(neamp[0:it]))
@@ -112,3 +119,47 @@ plt.plot(tamp[0:it],np.log10(nlinear[0:it]))
 plt.ylim(ylims)     # reset axes to something not crazy
 plt.legend(("model output","linear theory from K04"))
 plt.show()
+
+# Spectral analysis of fluctuations
+dy=y[1]-y[0]        # spacing
+ly=int(len(y))
+xf=scipy.fft.fftfreq(ly,dy)   # frequency axis for ffts
+nf=np.empty((N,ly),dtype=complex)
+nfpwr=np.zeros((N,ly))
+for it in range(N):
+    nf[it,:]=scipy.fft.fft(neslices[it,:])
+    nfpwr[it,:]=nf[it,:]*np.conjugate(nf[it,:])
+
+# only use positive frequencies (since real-valued signal negatives are linearly dependent)
+xfplus=xf[0:ly//2]
+nfpwrplus=nfpwr[0:N,0:ly//2]
+
+# Select a few frequencies to track
+ifreq1=np.argmin(abs(xfplus-0.00135))    # fastest growing mode
+ifreq2=np.argmin(abs(xfplus-0.0006))     # longer wavelength feature? sub-harmonic???
+ifreq3=np.argmin(abs(xfplus-0.0002))     # larger feature appearing near end?
+ifreq4=np.argmin(abs(xfplus-0.0018))     # features that loses energy in the middle
+
+# plots of frequency domain fluctuations
+plt.subplots(2,1,dpi=150)
+plt.subplot(2,1,1)
+#plt.pcolormesh(tamp[0:N],xf[0:ly//2],np.abs(nf[0:N,0:ly//2].transpose()))
+plt.pcolormesh(tamp[0:N],xfplus,np.log10(nfpwrplus.transpose()))
+plt.xlabel('time (s)')
+plt.ylabel('wavenumber (m$^{-1}$)')
+plt.title("$\Delta n_e$ power spectrum (log$_{10})$")
+plt.colorbar()
+plt.ylim(0,0.005)
+plt.clim(21,23)
+plt.subplot(2,1,2)
+plt.plot(tamp[0:N],np.log10(nfpwrplus[:,ifreq1]))
+plt.plot(tamp[0:N],np.log10(nfpwrplus[:,ifreq2]))
+plt.plot(tamp[0:N],np.log10(nfpwrplus[:,ifreq3]))
+plt.plot(tamp[0:N],np.log10(nfpwrplus[:,ifreq4]))
+plt.legend((str(1/xf[ifreq1]), str(1/xf[ifreq2]), str(1/xf[ifreq3]), str(1/xf[ifreq4) ))
+plt.xlabel("time (s)")
+plt.ylabel("$\Delta n_e$ power spectrum (log$_{10})$")
+plt.show()
+
+
+
