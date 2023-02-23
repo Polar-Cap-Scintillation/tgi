@@ -57,8 +57,8 @@ t0 = cfg["time"][0]
 # load data from a specified set of time indices
 its=range(0,len(cfg["time"]),1)
 ix2=int(np.floor(xg["lx"][1]/2))
-plt.ioff()
-plt.figure(dpi=150)
+# plt.ioff()
+# plt.figure(dpi=150)
 neamp=np.zeros(len(its))
 tamp=np.zeros(len(its))
 neslices=np.zeros((len(its),xg["lx"][2]))
@@ -75,23 +75,22 @@ dat=gemini3d.read.frame(direc,cfg["time"][0])   # get background state info dire
 ky=2*np.pi/750                                  # visually the fastest growing mode is about 750 m
 ne=dat["ne"][ialt,:,:]
 n0=ne.mean()                                    # try grid-averaged values for these, use F-region ref. altitude
-Ti=dat["Ts"][ialt,:,:,0]                        # use O+ temperature as ion temperature
-ix2=np.floor(xg["lx"][1]/2)                     # reference locations to compute derivatives
-ix3=np.floow(xg["lx"][2]/2)
+Ti=dat["Ti"][ialt,:,:]
+ix3=int(np.floor(xg["lx"][2]/2))
 Ti0=Ti.mean()
 dx=x[ix2+1]-x[ix2-1]
-dndx=(ne[ialt,ix2+1,ix3]-ne[ialt,ix2-1,ix3])/dx
-dTdx=(Ti[ialt,ix2+1,ix3]-Ti[ialt,ix2-1,ix3])/dx
+dndx=(ne[ix2+1,ix3]-ne[ix2-1,ix3])/dx
+dTdx=(Ti[ix2+1,ix3]-Ti[ix2-1,ix3])/dx
 q=1.6e-19
 B=45000e-9
 kB=1.38e-23
-gamma=ky/q/B*np.sqrt(kB*Ti0/n0*dndx*kB*dTdx)     # corrected version of approximate growth from Keskinen, 2004
+gamma=ky/q/B*np.sqrt(kB*Ti0/n0*abs(dndx)*kB*abs(dTdx))     # corrected version of approximate growth from Keskinen, 2004
 
 # define a reference exponential growth profile
 tref=500                                         # reference time after initial noise has settled and growth has begun
 itref=np.argmin(abs(tamp-tref))
 nref=neamp[itref];
-nlinear=nref*np.exp(gamma*(tamp-tref))
+nlinear=nref*np.exp(np.array(gamma)*(np.array(tamp)-tref))
 
 # plots
 plt.subplots(2,1,dpi=250)
@@ -104,6 +103,9 @@ plt.subplot(2,1,2)
 plt.plot(tamp[0:it],np.log10(neamp[0:it]))
 plt.xlabel("time (s)")
 plt.ylabel("$log_{10}~~\sigma_{\Delta n_e}$ (m$^{-3}$)")
-plt.plot(tamp[0:it],nlinear[0:it])
-plt.ylim([np.min(neamp),np.max(neamp)])
+axes=plt.gca()
+ylims=axes.get_ylim()
+plt.plot(tamp[0:it],np.log10(nlinear[0:it]))
+plt.ylim(ylims)     # reset axes to something not crazy
+plt.legend(("model output","linear theory from K04"))
 plt.show()
