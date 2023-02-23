@@ -133,8 +133,9 @@ for it in range(N):
 # only use positive frequencies (since real-valued signal negatives are linearly dependent)
 xfplus=xf[0:ly//2]
 nfpwrplus=nfpwr[0:N,0:ly//2]
+totalpwrplus=np.sum(nfpwrplus,1)
 
-# Select a few frequencies to track
+# Select a few reference frequencies to track
 ifreq1=np.argmin(abs(xfplus-0.00135))    # fastest growing mode
 ifreq2=np.argmin(abs(xfplus-0.0006))     # longer wavelength feature? sub-harmonic???
 ifreq3=np.argmin(abs(xfplus-0.0002))     # larger feature appearing near end?
@@ -156,10 +157,78 @@ plt.plot(tamp[0:N],np.log10(nfpwrplus[:,ifreq1]))
 plt.plot(tamp[0:N],np.log10(nfpwrplus[:,ifreq2]))
 plt.plot(tamp[0:N],np.log10(nfpwrplus[:,ifreq3]))
 plt.plot(tamp[0:N],np.log10(nfpwrplus[:,ifreq4]))
-plt.legend((str(1/xf[ifreq1]), str(1/xf[ifreq2]), str(1/xf[ifreq3]), str(1/xf[ifreq4) ))
+plt.plot(tamp[0:N],np.log10(totalpwrplus))
+plt.legend((str(1/xf[ifreq1]), str(1/xf[ifreq2]), str(1/xf[ifreq3]), str(1/xf[ifreq4]), "total" ))
 plt.xlabel("time (s)")
 plt.ylabel("$\Delta n_e$ power spectrum (log$_{10})$")
 plt.show()
 
+# Find reference density fluctuation amplitudes at these times, (note sqrt to go back to density units)
+n1=abs(nf[itref,ifreq1])
+n2=abs(nf[itref,ifreq2])
+n3=abs(nf[itref,ifreq3])
+n4=abs(nf[itref,ifreq4])
+
+# Evaluate the growth rate at various wavenumbers
+k1=2*np.pi*xf[ifreq1]
+k2=2*np.pi*xf[ifreq2]
+k3=2*np.pi*xf[ifreq3]
+k4=2*np.pi*xf[ifreq4]
+
+# Now distinct growth rates
+gamma1=k1/q/B*np.sqrt(kB*Ti0/n0*abs(dndx)*kB*abs(dTdx))
+gamma2=k2/q/B*np.sqrt(kB*Ti0/n0*abs(dndx)*kB*abs(dTdx))
+gamma3=k3/q/B*np.sqrt(kB*Ti0/n0*abs(dndx)*kB*abs(dTdx))
+gamma4=k4/q/B*np.sqrt(kB*Ti0/n0*abs(dndx)*kB*abs(dTdx))
+
+# Now exponential profiles 
+nlinear1=n1*np.exp(gamma1*(tamp-tref))
+nlinear2=n2*np.exp(gamma2*(tamp-tref))
+nlinear3=n3*np.exp(gamma3*(tamp-tref))
+nlinear4=n4*np.exp(gamma4*(tamp-tref))
+
+# Now plot against unstable growth modes
+plt.subplots(4,1, dpi=150)
+
+plt.subplot(4,1,1)
+plt.plot(tamp[0:N],np.log10(abs(nf[0:N,ifreq1])))
+axes=plt.gca()
+ylims=axes.get_ylim()
+plt.plot(tamp,np.log10(nlinear1))
+plt.ylim(ylims)
+plt.xlabel("time (s)")
+plt.ylabel("Fourier coeff.")
+plt.title(str(2*np.pi/k1))
+
+plt.subplot(4,1,2)
+plt.plot(tamp[0:N],np.log10(abs(nf[0:N,ifreq2])))
+axes=plt.gca()
+ylims=axes.get_ylim()
+plt.plot(tamp,np.log10(nlinear2))
+plt.ylim(ylims)
+plt.xlabel("time (s)")
+plt.ylabel("Fourier coeff.")
+plt.title(str(2*np.pi/k2))
+
+plt.subplot(4,1,3)
+plt.plot(tamp[0:N],np.log10(abs(nf[0:N,ifreq3])))
+axes=plt.gca()
+ylims=axes.get_ylim()
+plt.plot(tamp,np.log10(nlinear3))
+plt.ylim(ylims)
+plt.xlabel("time (s)")
+plt.ylabel("Fourier coeff.")
+plt.title(str(2*np.pi/k3))
+
+plt.subplot(4,1,4)
+plt.plot(tamp[0:N],np.log10(abs(nf[0:N,ifreq4])))
+axes=plt.gca()
+ylims=axes.get_ylim()
+plt.plot(tamp,np.log10(nlinear4))
+plt.ylim(ylims)
+plt.xlabel("time (s)")
+plt.ylabel("Fourier coeff.")
+plt.title(str(2*np.pi/k4))
+plt.show()
 
 
