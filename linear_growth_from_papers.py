@@ -1,6 +1,6 @@
 # hudson_linear_growth.py
-# Check linear growth rate calculated from the equations adn parameters given
-#   in Hudson & Kelley, 1976
+# Check linear growth rate calculated from the equations and parameters given
+#   in published literature
 
 import scipy.constants as const
 import numpy as np
